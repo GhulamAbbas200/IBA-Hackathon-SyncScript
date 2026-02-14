@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  CONTRIBUTOR
+  VIEWER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vaults      VaultUser[]
+  annotations Annotation[]
+  auditLogs   AuditLog[]
+}
+
+model Vault {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       VaultUser[]
+  sources     Source[]
+  auditLogs   AuditLog[]
+}
+
+model VaultUser {
+  id        String   @id @default(uuid())
+  userId    String
+  vaultId   String
+  role      Role     @default(VIEWER)
+  joinedAt  DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vaultId])
+}
+
+model Source {
+  id          String   @id @default(uuid())
+  vaultId     String
+  url         String
+  title       String?
+  metadata    Json?    // Stores extracted metadata, AI info, etc.
+  fileUrl     String?  // S3 URL for PDF/Whitepapers
+  addedById   String?  // Reference to User ID who added it (optional for simplicity or strict tracking)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vault       Vault         @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  annotations Annotation[]
+}
+
+model Annotation {
+  id        String   @id @default(uuid())
+  sourceId  String
+  userId    String
+  content   String
+  position  Json?    // Stores x,y or selection data for PDFs
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  vaultId   String
+  userId    String
+  action    String   // e.g., "SOURCE_ADDED", "USER_INVITED"
+  details   Json?
+  timestamp DateTime @default(now())
+
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

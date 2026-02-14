@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: syncscript_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: syncscript
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d syncscript" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  init-db:
+    image: node:18-alpine
+    container_name: syncscript_init_db
+    working_dir: /app
+    volumes:
+      - ./server/prisma:/app/prisma
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/syncscript
+    command: npx -y prisma db push --schema=/app/prisma/schema.prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:alpine
+    container_name: syncscript_redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+volumes:
+  pgdata:
