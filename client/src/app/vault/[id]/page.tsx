@@ -130,6 +130,11 @@ export default function VaultPage() {
     const [inviteError, setInviteError] = useState<string | null>(null);
     const [inviting, setInviting] = useState(false);
 
+    // Editing State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
     const textViewerRef = useRef<HTMLDivElement>(null);
 
     const socket = getSocket();
@@ -425,6 +430,24 @@ export default function VaultPage() {
         }
     };
 
+    const handleSaveContent = async () => {
+        if (!activeSource?.id || !editContent) return;
+        setIsSaving(true);
+        try {
+            await api.put(`/sources/${activeSource.id}/content`, {
+                content: editContent
+            });
+            // Update local state and exit edit mode
+            setTextFileContent(editContent);
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Failed to save content', error);
+            alert('Failed to save changes.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <div className="flex h-screen bg-white">
             {/* Share vault modal */}
@@ -567,6 +590,38 @@ export default function VaultPage() {
                                 <a href={activeSource.fileUrl ? (pdfViewUrl || activeSource.fileUrl) : (activeSource.url || '#')} target="_blank" rel="noreferrer" className="text-blue-600 text-sm hover:underline">
                                     Open Original
                                 </a>
+                                {isTextFile(activeSource) && (
+                                    <div className="flex gap-2 ml-4">
+                                        {isEditing ? (
+                                            <>
+                                                <button
+                                                    onClick={() => setIsEditing(false)}
+                                                    className="text-xs px-2 py-1 text-gray-600 hover:text-gray-800 border border-gray-300 rounded"
+                                                    disabled={isSaving}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={handleSaveContent}
+                                                    className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                                                    disabled={isSaving}
+                                                >
+                                                    {isSaving ? 'Saving...' : 'Save'}
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    setEditContent(textFileContent || '');
+                                                    setIsEditing(true);
+                                                }}
+                                                className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            >
+                                                Edit
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex-1 bg-gray-200 relative overflow-auto">
                                 {isTextFile(activeSource) ? (
@@ -579,12 +634,20 @@ export default function VaultPage() {
                                             Loading…
                                         </div>
                                     ) : textFileContent !== null ? (
-                                        <TextFileViewer
-                                            ref={textViewerRef}
-                                            content={textFileContent}
-                                            annotations={annotations}
-                                            onMouseUp={captureSelection}
-                                        />
+                                        isEditing ? (
+                                            <textarea
+                                                className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none"
+                                                value={editContent}
+                                                onChange={(e) => setEditContent(e.target.value)}
+                                            />
+                                        ) : (
+                                            <TextFileViewer
+                                                ref={textViewerRef}
+                                                content={textFileContent}
+                                                annotations={annotations}
+                                                onMouseUp={captureSelection}
+                                            />
+                                        )
                                     ) : null
                                 ) : activeSource.fileUrl ? (
                                     pdfViewError ? (
