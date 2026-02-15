@@ -57,7 +57,7 @@ function keyFromFileUrl(fileUrl: string): string | null {
     try {
         const pathname = new URL(fileUrl).pathname;
         const key = pathname.startsWith('/') ? pathname.slice(1) : pathname;
-        return key || null;
+        return decodeURIComponent(key) || null;
     } catch {
         return null;
     }
