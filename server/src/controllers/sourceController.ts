@@ -104,7 +104,8 @@ export const getSources = async (req: Request, res: Response) => {
 
         const sources = await prisma.source.findMany({
             where: { vaultId },
-            include: { annotations: true }
+            include: { annotations: true },
+            orderBy: { createdAt: 'desc' }
         });
 
         await setCache(cacheKey, sources, 300); // 5 min cache

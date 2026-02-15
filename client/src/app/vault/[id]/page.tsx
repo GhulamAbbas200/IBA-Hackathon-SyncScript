@@ -401,14 +401,16 @@ export default function VaultPage() {
             }
 
             // 3. Create Source in Backend
-            await api.post('/sources', {
+            const { data: newSource } = await api.post('/sources', {
                 vaultId,
                 title: file.name,
                 fileUrl: presignData.fileUrl,
             });
 
             setShowAddSource(false);
-            fetchSources();
+            // Refresh list but ensure we stay on the new source
+            await fetchSources();
+            setActiveSource(newSource);
         } catch (err) {
             const ax = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { error?: string; hint?: string } } }) : null;
             let msg = ax?.response?.data?.error ?? ax?.response?.data?.hint ?? (err instanceof Error ? err.message : 'Upload failed');
@@ -621,7 +623,7 @@ export default function VaultPage() {
             </div>
 
             {/* Right Sidebar: Annotations */}
-            <div className="w-72 border-l border-gray-200 bg-white p-4 flex flex-col min-h-0 hidden lg:flex">
+            <div className="w-72 border-l border-gray-200 bg-white p-4 flex flex-col min-h-0">
                 <h3 className="font-bold text-gray-800 mb-4">Annotations</h3>
                 {activeSource ? (
                     <>
